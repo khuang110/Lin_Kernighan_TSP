@@ -21,13 +21,24 @@ def main():
     # pprint(lkh.sets)
     print("\ndist arry")
     print(lkh.dist)
-    print("\ntour")
-    print(lkh.tour)
-    print("\nids")
-    print(lkh.ids)
-    lkh.run_lk()
-    print("\ntour")
-    print(lkh.tour)
+    print("---------------")
+    # print("\ntour")
+    # print(lkh.tour)
+    # print("\nids")
+    # print(lkh.ids)
+    # lkh.run_lk()
+    # print("\ntour")
+    # print(lkh.tour)
+    # lkh.init_adj()
+    # lkh.find_adjacent()
+    # print("\nadjacent")
+    # print(lkh.adj)
+
+    hg = to_hungarian(lkh)
+
+    hg.run2()
+
+
 
 
 # extract data from graph.txt

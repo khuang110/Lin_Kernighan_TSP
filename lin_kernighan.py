@@ -1,14 +1,15 @@
-import math, random
+import math, random, sys
 from euclideanGraph import Graph
 
 
 # Class for Lin Kernighan
 class LKTsp(Graph):
-    def __init__(self, _k):
+    def __init__(self, _k=0):
         Graph.__init__(self, _k)
         self.dist = [[]]
         self.tour = []
         self.len_ = 0
+        self.path = []
 
     # Creates a random tour
     def init_tour(self):
@@ -16,6 +17,9 @@ class LKTsp(Graph):
         random.shuffle(tmp)
         self.tour = tmp
         self.len_ = len(tmp)
+
+    def get_length(self):
+        return self._k
 
     # Get previous town id
     def get_prev_id(self, i):
@@ -191,9 +195,10 @@ class LKTsp(Graph):
             return False
         else:
             for i in range(1, len(tour_idx)-1, 2):
-                if tour_idx[i] == x and tour_idx[i+1] == y:
+                x, y = self.ids[tour_idx[i]]
+                if x == x and y == y:
                     return False
-                if tour_idx[i] == y and tour_idx[i+1] == x:
+                if x == y and y == x:
                     return False
         return True
 
@@ -236,7 +241,10 @@ class LKTsp(Graph):
         """
         res = []
         for i in range(0, len(tour)):
-            x, y = self.ids[tour[i]]
+            if tour[i] == -1:
+                x, y = -1, -1
+            else:
+                x, y = self.ids[tour[i]]
             e = Edge(x, x)
             res.append(e)
         return res
@@ -264,14 +272,47 @@ class LKTsp(Graph):
             for j in range(0, len(curr_edge)):
                 e = curr_edge[j]
                 if e == edge:
-                    curr_edge[j] = None
+                    curr_edge.remove(curr_edge[j])
                     ln -= 1
                     break
         for edge in y:
+            print(edge.v1, edge.v2)
             curr_edge.append(edge)
             ln += 1
 
-        return tour_from_edges(curr_edge, ln)
+        return self.tour_from_edges(curr_edge, ln)
+
+    def create_eulerian_tour(self, tour, tour_idx):
+        queue = [[[], tour[0], tour]]
+
+        while queue:
+            path, node, unvisited = queue.pop()
+            path += [node]
+
+            if not unvisited:
+                return path
+            for edge in unvisited:
+                if node in edge:
+                    queue += [[path, next_node(node, edge)]]
+
+    def hierholzer(self, tour_idx):
+        start = tour_idx[0]
+        tour = [start]
+        traversed = {}
+        idx = 0
+
+        while len(traversed) // 2 < len(self.sets) and idx < len(tour):
+            subset = []
+
+    def dfs(self, u, root, subset, traversed):
+        for v in self.dist[u]:
+            if (u, v) not in traversed or (v, u) not in traversed:
+                traversed[(u, v)] = traversed[(v, u)] = True
+                subset.append(v)
+                if v == root:
+                    return
+                else:
+                    self.dfs(u, root, subset, traversed)
 
     def get_y_edges(self, tour):
         """ This function just returns a list of vertices from tour
@@ -281,8 +322,11 @@ class LKTsp(Graph):
             Edge: returns list of edge objects to be added
         """
         res = []
-        for i in range(0, self.len_):
-            x, y = self.ids[tour[i]]
+        for i in range(2, self.len_-1):
+            if tour[i] == -1:
+                x, y = -1, -1
+            else:
+                x, y = self.ids[tour[i]]
             e = Edge(x, y)
             res.append(e)
         return res
@@ -295,8 +339,11 @@ class LKTsp(Graph):
             Edge: returns list of edge objects to be added
         """
         res = []
-        for i in range(0, self.len_):
-            x, y = self.ids[tour[i]]
+        for i in range(1, self.len_-2):
+            if tour[i] == -1:
+                x, y = -1, -1
+            else:
+                x, y = self.ids[tour[i]]
             e = Edge(x, y)
             res.append(e)
         return res
@@ -322,46 +369,68 @@ class LKTsp(Graph):
                 return False
         return True
 
+    def tour_from_edges(self, curr_edge, ln):
+        tour = [-1 for i in range(ln)]
+        end = -1
+        i = 0
+        for i in range(0, len(curr_edge)):
+            if curr_edge[i] is not None:
+                tour[0] = curr_edge[i].v1
+                tour[1] = curr_edge[i].v2
+                end = tour[1]
+                break
+        curr_edge[i] = None
+        j = 2
+        while True:
+            k = 0
+            if j >= ln:
+                break
+            for k in range(0, len(self.ids)):
+                if curr_edge[j] is None:
+                    continue
+                e = curr_edge[j]
+                x, y = self.ids[k]
+                if e is not None and e.v1 == x:
+                    end = k
+                    break
+                elif e is not None and e.v2 == y:
+                    end = k
+                    break
+            if j == len(curr_edge):
+                break
+
+            curr_edge[j] = None
+
+            tour[j] = end
+            j += 1
+
+        return tour
+
+
 
 def get_tour_prime(tour_idx, i):
     return tour_idx[0:i+2]
 
 
-def tour_from_edges(curr_edge, ln):
-    tour = [-1]*ln
-    end = -1
-    i = 0
-    for i in range(0, len(curr_edge)):
-        if curr_edge[i] is not None:
-            tour[0] = curr_edge[i].v1
-            tour[1] = curr_edge[i].v2
-            end = tour[1]
-            break
-    curr_edge[i] = None
-    j = 2
-    while True:
-        k = 0
-        if j >= ln:
-            break
-        for k in range(0, len(curr_edge)):
-            if curr_edge[j] is None:
-                continue
-            e = curr_edge[j]
-            if e is not None and e.v1 == end:
-                end = e.v2
-                break
-            elif e is not None and e.v2 == end:
-                end = e.v1
-                break
-        if j == len(curr_edge):
-            break
+def next_node(curr, edge):
+    return edge[0] if curr == edge[1] else edge[1]
 
-        curr_edge[j] = None
 
-        tour[j] = end
-        j += 1
+def remove_edge(queue, to_rm):
+    return [i for i in queue if i != to_rm]
 
-    return tour
+
+def to_hungarian(obj):
+    return Hungarian(obj.get_length(), obj.dist)
+
+
+def transpose(m):
+    res = [[] for i in range(len(m[0]))]
+
+    for i in range(len(m)):
+        for j in range(len(m[0])):
+            res[j].append(m[i][j])
+    return res
 
 
 class Edge:
@@ -371,5 +440,226 @@ class Edge:
         self.v1 = i if i > j else j
         self.v2 = j if i > j else i
 
+    def __eq__(self, other):
+        if self.v1 == other.v1 and self.v2 == other.v2:
+            return True
+        else:
+            return False
+
+
+class Hungarian:
+    def __init__(self, k, dist):
+        self._k = k
+        self.dist = dist
+        self.zeros = [[0]*self._k for i in range(self._k)]
+        self.lines = [[0]*self._k for i in range(self._k)]
+
+        for i in range(k):
+            for j in range(k):
+                if i == j:
+                    self.dist[i][j] = sys.maxsize
+
+    def max(self, i, j):
+        col = 0
+        row = 0
+
+        for k in range(self._k):
+            if self.dist[i][k] == 0:
+                row += 1
+
+        for k in range(self._k):
+            if self.dist[k][j] == 0:
+                col += 1
+
+        return col if col > row else row * -1
+
+    def minimize_row(self):
+        # Step 1
+        res = []
+        m = -1
+        for row in self.dist:
+            m = min(row, key=(lambda x: x if x > 0 and x > m else 2**10))
+            res.append(list(map((lambda x: x - m if x > m else 0), row)))
+        self.dist = res
+
+    def minimize_col(self):
+        # Step 2
+        res = []
+        for row in transpose(self.dist):
+            m = min(row)
+            if m < 0:
+                res.append(row)
+                continue
+            else:
+                res.append(list(map((lambda x: x - m if x > m else 0), row)))
+        # for i in range(self._k):
+        #     col = []
+        #     for j in range(self._k):
+        #         col.append(self.dist[j][i])
+        #     m = min(col, key=(lambda x: x if x > 0 and x > m else 2**10))
+        #     if m <= 0:
+        #         res.append(col)
+        #         continue
+        #     else:
+        #         res.append(list(map((lambda x: x - m if x > m else 0), col)))
+
+        self.dist = transpose(res)
+
+    def check_zeros_col(self):
+        sum_zeros = 0
+        for row in range(len(self.dist)):
+            for col in self.dist[row]:
+                if col == 0:
+                    sum_zeros += 1
+        return sum_zeros == self._k
+
+    def clear_neighbor(self, i, j):
+        if self.zeros[i][j] > 0:
+            for k in range(self._k):
+                if self.zeros[k][j] > 0:
+                    # Clear neighbor
+                    self.zeros[k][j] = 0
+                # Add line
+                self.lines[k][j] = 1
+        else:
+            for k in range(self._k):
+                if self.zeros[i][k] < 0:
+                    # Clear neighbor
+                    self.zeros[i][k] = 0
+                # Add line
+                self.lines[i][k] = 1
+        self.lines[i][j] = 1
+        self.zeros[i][j] = 0
+
+    def get_min_uncovered(self):
+        # Get the min of all the uncovered elements
+        res = []
+        for i in range(self._k):
+            for j in range(self._k):
+                if self.lines[i][j] == 0:
+                    if self.dist[i][j] < 0:
+                        res.append(0)
+                    else:
+                        res.append(self.dist[i][j])
+        if not res:
+            return -1
+        else:
+            return min(res)
+
+    def add_min_to_covered(self, min_):
+        # Add min uncovered to covered
+
+        for i in range(self._k):
+            for j in range(self._k):
+                if self.lines[i][j] == 0:      # Covered lines
+                    self.dist[i][j] -= min_ if self.dist[i][j] >= min_ else 0
+                elif self.lines[i][j] == 1:     # Uncovered lines
+                    self.dist[i][j] += min_
+
+    def sub_min(self, min_):
+        # subtract min from whole matrix
+        for i in range(self._k):
+            for j in range(self._k):
+                self.dist[i][j] -= min_ #if self.dist[i][j] >= min_ else 0
+
+    def cover_zeros(self):
+        # Step 3
+        for i in range(self._k):
+            for j in range(self._k):
+                if abs(self.zeros[i][j]) > 0:
+                    self.clear_neighbor(i, j)
+
+    def get_num_lines(self):
+        count = 0
+        for row in self.dist:
+            if all(j == 1 for j in row):
+                count += 1
+        return count
+
+    def max_matching(self):
+        visited = [[]]*2
+        visited[0] = [-1 for _ in range(self._k)]
+
+        res_row = 0
+        for i in range(self._k):
+            visited[1] = [False for _ in range(self._k)]
+            if self.bipartite_match(i, visited):
+                res_row += 1
+
+    def bipartite_match(self, i, visited):
+        # Depth first search
+        for j in range(self._k):
+            if self.zeros[i][j] != 0 and visited[1][j] is False:
+                visited[1][j] = True
+                if visited[0][j] == -1 or self.bipartite_match(visited[0][j], visited):
+                    visited[0][j] = i
+                    return True
+        return False
+
+    def run(self):
+        #for i in range(self._k):
+        self.minimize_row()                              # Step 1
+        if self.check_zeros_col():                       # Step 2
+            self.minimize_col()
+            # else:
+            #     break
+
+        while True:
+
+            [print(row) for row in self.dist]
+            # self.zeros = [[0] * self._k for i in range(self._k)]
+            # self.lines = [[0] * self._k for i in range(self._k)]
+            for i in range(self._k):
+                for j in range(self._k):
+                    if self.dist[i][j] == 0:
+                        self.zeros[i][j] = self.max(i, j)
+
+            self.cover_zeros()                           # Step 3
+            if self.get_num_lines() == self._k:           # Step 4
+                break
+
+            print("LIENS")
+            [print(row) for row in self.lines]
+
+            min_ = self.get_min_uncovered()
+            #if min_ == 0:
+
+            self.add_min_to_covered(min_)
+            self.sub_min(min_)
+           # [print(row) for row in self.lines]
+            print()
+
+    def find_path(self, weight, path, idx, lst):
+        if len(path) == self._k:
+            # Add path back to home
+            path.append(0)
+            weight.append(lst[0][idx])
+            return
+        lst2 = []
+        for i, ele in enumerate(lst[idx]):
+            if i not in path:
+                lst2.append(ele)
+            else:
+                lst2.append(sys.maxsize)
+        m = min(lst2)
+
+        idx = lst[idx].index(m)
+        if idx not in path:
+            path.append(idx)
+            weight.append(m)
+            # Call function and swap row/ col
+            self.find_path(weight, path, idx, transpose(lst))
+
+
+    def run2(self):
+        # Home index 0
+        idx = 0
+        weight = []
+        path = [0]
+        self.find_path(weight, path, idx, self.dist)
+        print("PATH")
+        print(path)
+        print("WEIGHT")
+        print(weight)
 
 

@@ -43,6 +43,7 @@ class Graph:
         self.g = []
         self.ids = {}
         self.dist = []
+        self.adj = {}
 
     # Add a vertex to graph
     def add_vertex(self, x, y):
@@ -52,6 +53,11 @@ class Graph:
     def help_sort(self, s):
         d = calc_distance(s[0])
         return d
+
+    def init_adj(self):
+        for i in range(0, len(self.sets)):
+            p = {i: []}
+            self.adj.update(p)
 
     # Go through graph and find all possible sets
     def find_sets(self):
@@ -64,10 +70,26 @@ class Graph:
             p = {idx: [i, c]}
             s.update(p)
             idx += 1
+
         self.sets = [val for key, val in s.items() if val != -1]
         # Move sets to sorted list
         # No need to have it put in a dict first, too lazy to remove it..
         self.sets.sort(key=self.help_sort)
+
+    def find_adjacent(self):
+        idx = 0
+        s = {}
+        # Itertool.combinations finds all possible sets
+        for v1, v2 in itertools.combinations(self.g, 2):
+            v_idx = ()
+            x1, y1 = v1
+            x2, y2 = v2
+            for i in range(0, len(self.ids)):
+                x, y = self.ids[i]
+                if x1 == x and y1 == y:
+                    self.adj[i].append(v2)
+                    break
+            idx += 1
 
 
 # Calculate euclidean distance
