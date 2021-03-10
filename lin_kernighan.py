@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import math, random, sys
 from euclideanGraph import Graph
 
@@ -433,6 +434,16 @@ def transpose(m):
     return res
 
 
+def upper_left(a, n):
+    # Matrix a
+    return [[a[i][j] for j in range(n)] for i in range(n)]
+
+
+def lower_right(a, n):
+    # Matrix a
+    return [[a[i][j] for j in range(len(a)-n, len(a))] for i in range(len(a)-n, len(a))]
+
+
 class Edge:
     # v1: vertex 1
     # v2: vertex 2
@@ -571,9 +582,13 @@ class Hungarian:
 
     def get_num_lines(self):
         count = 0
-        for row in self.dist:
+        for row in self.lines:
             if all(j == 1 for j in row):
                 count += 1
+        for col in transpose(self.lines):
+            if all(j == 1 for j in col):
+                count += 1
+
         return count
 
     def max_matching(self):
@@ -628,18 +643,22 @@ class Hungarian:
             self.sub_min(min_)
            # [print(row) for row in self.lines]
             print()
+        [print(row) for row in self.lines]
 
     def find_path(self, weight, path, idx, lst):
         if len(path) == self._k:
             # Add path back to home
-            path.append(0)
+            path.append(path[0])
             weight.append(lst[0][idx])
+            print("end of weight")
+            print(lst[0][idx])
             return
         lst2 = []
         for i, ele in enumerate(lst[idx]):
             if i not in path:
                 lst2.append(ele)
             else:
+                self.dist[idx][i] = sys.maxsize
                 lst2.append(sys.maxsize)
         m = min(lst2)
 
@@ -648,18 +667,75 @@ class Hungarian:
             path.append(idx)
             weight.append(m)
             # Call function and swap row/ col
-            self.find_path(weight, path, idx, transpose(lst))
+            self.find_path(weight, path, idx, lst)
 
+    def find_path_itr(self, weight, path, idx, lst):
+        # Iterative find path
+        while len(path) < self._k:
+            lst2 = []
+            for i, ele in enumerate(lst[idx]):
+                if i not in path:
+                    lst2.append(ele)
+                else:
+                    self.dist[idx][i] = sys.maxsize
+                    lst2.append(sys.maxsize)
+            m = min(lst2)
+
+            idx = lst[idx].index(m)
+            if idx not in path:
+                path.append(idx)
+                weight.append(m)
+
+            if len(path) == self._k:
+                # Add path back to home
+                path.append(path[0])
+                weight.append(lst[0][idx])
+                print("end of weight")
+                print(lst[0][idx])
+                return
+
+    def run3(self):
+        m = max(self.dist[0])
+        idx = self.dist[0].index(m)
+        weight = []
+        tour = [idx]
+
+        dist_e2 = (transpose(self.dist[::-1]))[::-1]
+        self.find_path_itr(weight, tour, idx, dist_e2)
+        # for i in range(2, self._k):
+        #     loc_weight = []
+        #     loc_tour = [idx]
+        #     sub_dist = upper_left(self.dist, i)
+        #     self.find_path(loc_weight, tour, idx, sub_dist)
+        #     weight.append(sum(loc_weight))
+        #     print("loc weight")
+        #     print(sum(loc_weight))
+        print("run3 weight")
+        print(sum(weight))
 
     def run2(self):
-        # Home index 0
-        idx = 0
+        sys.setrecursionlimit(10400)
+
+        m = max(self.dist[0])
+        idx = self.dist[0].index(m)
+        # Home index
+        print("IDX")
+        print(idx)
         weight = []
-        path = [0]
-        self.find_path(weight, path, idx, self.dist)
+        tour = [idx]
+
+        self.find_path(weight, tour, idx, self.dist)
         print("PATH")
-        print(path)
+        print(tour)
         print("WEIGHT")
         print(weight)
+        print(self._k)
+        print("LEN WEIGHT")
+        print(len(weight))
+        print("sum weight")
+        print(sum(weight))
+
+        return tour
+
 
 

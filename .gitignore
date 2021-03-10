@@ -1,4 +1,4 @@
 *.txt_tour
 TSPAllVisited.*
-__pychache__
 tsp-verifier.*
+.idea
